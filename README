@@ -1,0 +1,15 @@
+EXIF-CLASSIFIER
+===============
+
+Simple ruby script, read all pictures from a directory,
+then create a new directory tree using the exif.
+
+Default is:
+
+root/year/month/date.ext
+
+Requirement: exifr (sudo gem install exifr)
+
+This script is dedicated to Lyne, my goddaugther born
+this morning (20100725).
+I wish you a life full of luck, love and passions :)
