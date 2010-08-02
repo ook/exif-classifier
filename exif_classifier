@@ -1,0 +1,86 @@
+#!/usr/bin/ruby
+#
+## exif_classifier
+## ---------------
+##
+## Classify your pictures from their EXIF entry.
+##
+## Usage: exif_classifier picture_or_directory [,picture_or_directory…] destination_root
+##
+## Default tree is destination/yyyy/mm/date.ext
+##
+require 'pathname'
+require 'rubygems'
+require 'exifr'
+
+class ExifClassifier
+  REFUSAL_REASON = [ :unreadable ]
+  REFUSAL_TEXT   = { :unreadable => 'Unreadable file', :not_existing => 'Not existing file' }
+  class << self
+    def parse_opts(argv)
+      argv.each do |arg|
+        if arg.start_with('-')
+          parse_special_opt(arg)
+          next
+        end
+      end
+    end
+  end
+  
+  def initialize
+    @staged_images = []
+    @refused_entries = {}
+    @destination_root = Pathname.new('.')
+    @pattern = '%Y/%m/%Y%m%d-%H%M%S'
+  end
+
+  # stage for processing files or directories, or a mix
+  # of those.
+  def stage(files_or_directories = [])
+    files_or_directories = [files_or_directories] unless files_or_directories.instance_of?(Array)
+    files_or_directories.each do |file_or_directory|
+      pathname = Pathname.new(file_or_directory)
+      @staged_images << stage(pathname.entries) if pathname.directory?
+      if pathname.readable?
+        @staged_images << pathname
+        puts "add"
+      else
+        @refused_entries << pathname
+        raise file_or_directory
+      end
+    end
+    puts "be"
+    @staged_images
+  end
+  
+  def get_target_pathname(picture_pathname)
+    pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@pattern)
+    pathname = Pathname.new("#{@destination_root}/#{pattern}#{picture_pathname.extname.downcase}")
+  end
+
+  def process
+    @staged_images.each do |pathname|
+      classify(pathname)
+    end
+  end
+
+  def classify(picture)
+    target_file = get_target_pathname(picture)
+    puts target_file
+    # TODO rescue SystemCallError
+    target_file.dirname.mkpath
+    FileUtils.copy_file(picture.to_s, target_file.to_s, true)
+  end
+
+end
+
+if __FILE__ == $0
+  arguments = ARGV
+  #destination = arguments.delete_at(-1)
+  puts "arg #{arguments}"
+  #puts destination
+  classifier = ExifClassifier.new
+  puts classifier.stage(arguments)
+  classifier.process
+  puts "Ok!"
+end
