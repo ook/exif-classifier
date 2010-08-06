@@ -29,7 +29,7 @@ class ExifClassifier
   
   def initialize
     @staged_images = []
-    @refused_entries = {}
+    @refused_entries = []
     @destination_root = Pathname.new('.')
     @pattern = '%Y/%m/%Y%m%d-%H%M%S'
   end
@@ -37,28 +37,38 @@ class ExifClassifier
   # stage for processing files or directories, or a mix
   # of those.
   def stage(files_or_directories = [])
+    puts "entries="
+    puts files_or_directories.inspect
     files_or_directories = [files_or_directories] unless files_or_directories.instance_of?(Array)
     files_or_directories.each do |file_or_directory|
       pathname = Pathname.new(file_or_directory)
-      @staged_images << stage(pathname.entries) if pathname.directory?
+      @staged_images << stage(pathname.children) if pathname.directory?
       if pathname.readable?
         @staged_images << pathname
-        puts "add"
+        puts pathname.to_s
       else
         @refused_entries << pathname
-        raise file_or_directory
+        puts "refused: #{pathname.to_s}"
+        raise file_or_directory.to_s
       end
     end
-    puts "be"
     @staged_images
   end
   
   def get_target_pathname(picture_pathname)
-    pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@pattern)
+    begin
+      pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@pattern)
+    rescue RuntimeError => e
+      puts "Can't retrieve EXIF from #{picture_pathname}: #{e.message}"
+      return nil
+    end
     pathname = Pathname.new("#{@destination_root}/#{pattern}#{picture_pathname.extname.downcase}")
   end
 
-  def process
+  def process(destination)
+    unless destination.empty?
+      @destination_root = Pathname.new destination
+    end
     @staged_images.each do |pathname|
       classify(pathname)
     end
@@ -66,21 +76,23 @@ class ExifClassifier
 
   def classify(picture)
     target_file = get_target_pathname(picture)
-    puts target_file
+    unless target_file
+      puts "Abort classification for #{picture}"
+      return nil
+    end
     # TODO rescue SystemCallError
     target_file.dirname.mkpath
     FileUtils.copy_file(picture.to_s, target_file.to_s, true)
+    puts "Done: #{target_file}"
   end
 
 end
 
 if __FILE__ == $0
   arguments = ARGV
-  #destination = arguments.delete_at(-1)
-  puts "arg #{arguments}"
-  #puts destination
+  destination = arguments.delete_at(-1)
   classifier = ExifClassifier.new
   puts classifier.stage(arguments)
-  classifier.process
+  classifier.process(destination)
   puts "Ok!"
 end
