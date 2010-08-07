@@ -37,22 +37,19 @@ class ExifClassifier
   # stage for processing files or directories, or a mix
   # of those.
   def stage(files_or_directories = [])
-    puts "entries="
-    puts files_or_directories.inspect
     files_or_directories = [files_or_directories] unless files_or_directories.instance_of?(Array)
     files_or_directories.each do |file_or_directory|
       pathname = Pathname.new(file_or_directory)
-      @staged_images << stage(pathname.children) if pathname.directory?
+      return stage(pathname.children) if pathname.directory?
       if pathname.readable?
         @staged_images << pathname
-        puts pathname.to_s
       else
         @refused_entries << pathname
-        puts "refused: #{pathname.to_s}"
+        puts "Can't read: #{pathname.to_s}"
         raise file_or_directory.to_s
       end
     end
-    @staged_images
+    @staged_images.inspect
   end
   
   def get_target_pathname(picture_pathname)
@@ -75,6 +72,7 @@ class ExifClassifier
   end
 
   def classify(picture)
+    puts "Classify: #{picture}"
     target_file = get_target_pathname(picture)
     unless target_file
       puts "Abort classification for #{picture}"
@@ -83,7 +81,6 @@ class ExifClassifier
     # TODO rescue SystemCallError
     target_file.dirname.mkpath
     FileUtils.copy_file(picture.to_s, target_file.to_s, true)
-    puts "Done: #{target_file}"
   end
 
 end
