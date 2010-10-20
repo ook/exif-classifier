@@ -17,6 +17,10 @@ class ExifClassifier
   REFUSAL_REASON = [ :unreadable ]
   REFUSAL_TEXT   = { :unreadable => 'Unreadable file', :not_existing => 'Not existing file' }
   class << self
+    def usage
+      open(__FILE__).read.grep(/^## ?/).join.gsub(/^## ?/, '')
+    end
+
     def parse_opts(argv)
       argv.each do |arg|
         if arg.start_with('-')
@@ -87,6 +91,7 @@ end
 
 if __FILE__ == $0
   arguments = ARGV
+  abort(ExifClassifier.usage) if arguments.empty?
   destination = arguments.delete_at(-1)
   classifier = ExifClassifier.new
   puts classifier.stage(arguments)
