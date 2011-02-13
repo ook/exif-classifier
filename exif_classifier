@@ -5,7 +5,7 @@
 ##
 ## Classify your pictures from their EXIF entry.
 ##
-## Usage: exif_classifier picture_or_directory [,picture_or_directory…] destination_root
+## Usage: exif_classifier [options] picture_or_directory [,picture_or_directory,...] destination_root
 ##
 ## Default tree is destination/yyyy/mm/date.ext
 ##
@@ -13,29 +13,45 @@ require 'pathname'
 require 'rubygems'
 require 'exifr'
 
+require 'optparse'
+
 class ExifClassifier
-  REFUSAL_REASON = [ :unreadable ]
-  REFUSAL_TEXT   = { :unreadable => 'Unreadable file', :not_existing => 'Not existing file' }
+  REFUSAL_REASON = [ :unreadable, :no_exif, :filter ]
+  REFUSAL_TEXT   = { :unreadable => 'Unreadable file', :no_exif => 'No EXIF info', :filter => 'Excluded from file filter' } 
   class << self
     def usage
       open(__FILE__).read.grep(/^## ?/).join.gsub(/^## ?/, '')
     end
 
-    def parse_opts(argv)
-      argv.each do |arg|
-        if arg.start_with('-')
-          parse_special_opt(arg)
-          next
-        end
-      end
+    def parse_opts
+      @options = {
+            :pattern => '%Y/%m/%Y%m%d-%H%M%S',
+            :delete  => false,
+            :dry     => false,
+            :verbose => false,
+            :accepted_files    => ['jpeg', 'jpg' ],
+            :ignore_if_no_exif => true,
+            :sources     => '',
+            :destination => './'
+      }
+      opts = OptionParser.new
+      opts.banner = usage
+      opts.on('-p','--pattern PATTERN', 'output pattern') { |pattern| @options[:pattern] = pattern }
+      opts.on('-k','--delete', 'delete original files once proceed') { @options[:delete] = true } 
+      opts.on('-d','--dry', 'dry run') { @options[:dry] = true } 
+      opts.parse!
+      # Remainings in ARGV are sources, the last one is the destination
+      @options[:destination] = ARGV.delete(-1)
+      @options[:sources]     = ARGV
     end
   end
   
   def initialize
-    @staged_images = []
+    @failed_copy     = []
+    @succeed_copy    = []
+    @staged_images   = []
     @refused_entries = []
     @destination_root = Pathname.new('.')
-    @pattern = '%Y/%m/%Y%m%d-%H%M%S'
   end
 
   # stage for processing files or directories, or a mix
@@ -66,7 +82,7 @@ class ExifClassifier
     pathname = Pathname.new("#{@destination_root}/#{pattern}#{picture_pathname.extname.downcase}")
   end
 
-  def process(destination)
+  def process(destination = nil)
     unless destination.empty?
       @destination_root = Pathname.new destination
     end
@@ -85,16 +101,22 @@ class ExifClassifier
     # TODO rescue SystemCallError
     target_file.dirname.mkpath
     FileUtils.copy_file(picture.to_s, target_file.to_s, true)
+    if FileUtils.compare_file(picture.to_s, target_file.to_s)
+      @succeed_copy << picture
+    else
+      @failed_copy << picture
+    end
+  end
+
+  def delete_succeed_sources
+    @succeed_copy.each { |pathname| Filecopy.rm(pathname.to_sh) }
   end
 
 end
 
 if __FILE__ == $0
-  arguments = ARGV
-  abort(ExifClassifier.usage) if arguments.empty?
-  destination = arguments.delete_at(-1)
+  ExifClassifier.parse_opts
   classifier = ExifClassifier.new
-  puts classifier.stage(arguments)
-  classifier.process(destination)
+  classifier.process
   puts "Ok!"
 end
