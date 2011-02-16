@@ -51,7 +51,15 @@ class ExifClassifier
     @succeed_copy    = []
     @staged_images   = []
     @refused_entries = []
-    @destination_root = Pathname.new('.')
+  end
+
+  def report
+    content = %{
+      Staged files  : #{@staged_images.length}
+      Proceed files : #{@succeed_copy.length}
+      Failed files  : #{@failed_copy.length}
+    }
+    puts content
   end
 
   # stage for processing files or directories, or a mix
@@ -82,10 +90,7 @@ class ExifClassifier
     pathname = Pathname.new("#{@destination_root}/#{pattern}#{picture_pathname.extname.downcase}")
   end
 
-  def process(destination = nil)
-    unless destination.empty?
-      @destination_root = Pathname.new destination
-    end
+  def process
     @staged_images.each do |pathname|
       classify(pathname)
     end
@@ -118,5 +123,5 @@ if __FILE__ == $0
   ExifClassifier.parse_opts
   classifier = ExifClassifier.new
   classifier.process
-  puts "Ok!"
+  classifier.report
 end
