@@ -18,33 +18,8 @@ require 'optparse'
 class ExifClassifier
   REFUSAL_REASON = [ :unreadable, :no_exif, :filter ]
   REFUSAL_TEXT   = { :unreadable => 'Unreadable file', :no_exif => 'No EXIF info', :filter => 'Excluded from file filter' } 
-  class << self
-    def usage
-      open(__FILE__).read.grep(/^## ?/).join.gsub(/^## ?/, '')
-    end
 
-    def parse_opts
-      @options = {
-            :pattern => '%Y/%m/%Y%m%d-%H%M%S',
-            :delete  => false,
-            :dry     => false,
-            :verbose => false,
-            :accepted_files    => ['jpeg', 'jpg' ],
-            :ignore_if_no_exif => true,
-            :sources     => '',
-            :destination => './'
-      }
-      opts = OptionParser.new
-      opts.banner = usage
-      opts.on('-p','--pattern PATTERN', 'output pattern') { |pattern| @options[:pattern] = pattern }
-      opts.on('-k','--delete', 'delete original files once proceed') { @options[:delete] = true } 
-      opts.on('-d','--dry', 'dry run') { @options[:dry] = true } 
-      opts.parse!
-      # Remainings in ARGV are sources, the last one is the destination
-      @options[:destination] = ARGV.delete(-1)
-      @options[:sources]     = ARGV
-    end
-  end
+  attr_reader :options
   
   def initialize
     @failed_copy     = []
@@ -53,11 +28,46 @@ class ExifClassifier
     @refused_entries = []
   end
 
+  def usage
+    open(__FILE__).read.grep(/^## ?/).join.gsub(/^## ?/, '')
+  end
+
+  def opts_valid?
+    !@options[:destination].nil? && Pathname.new(@options[:destination]).exist? && !(@options[:sources] || []).empty?
+  end
+
+  def parse_opts
+    @options = {
+          :pattern => '%Y/%m/%Y%m%d-%H%M%S',
+          :delete  => false,
+          :dry     => false,
+          :verbose => false,
+          :accepted_files    => ['jpeg', 'jpg' ],
+          :ignore_if_no_exif => true,
+          :sources     => '',
+          :destination => './'
+    }
+    opts = OptionParser.new
+    opts.banner = usage
+    opts.on('-p','--pattern PATTERN', 'output pattern') { |pattern| @options[:pattern] = pattern }
+    opts.on('-k','--delete', 'delete original files once proceed') { @options[:delete] = true } 
+    opts.on('-d','--dry', 'dry run') { @options[:dry] = true } 
+    opts.parse!
+    # Remainings in ARGV are sources, the last one is the destination
+    @options[:destination] = ARGV.delete_at(-1)
+    @options[:sources]     = ARGV
+    if opts_valid?
+      stage(@options[:sources])
+      return true
+    end
+    false
+  end
+
   def report
     content = %{
       Staged files  : #{@staged_images.length}
-      Proceed files : #{@succeed_copy.length}
       Failed files  : #{@failed_copy.length}
+      Proceed files : #{@succeed_copy.length}
     }
     puts content
   end
@@ -82,12 +92,12 @@ class ExifClassifier
   
   def get_target_pathname(picture_pathname)
     begin
-      pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@pattern)
+      pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@options[:pattern])
     rescue RuntimeError => e
       puts "Can't retrieve EXIF from #{picture_pathname}: #{e.message}"
       return nil
     end
-    pathname = Pathname.new("#{@destination_root}/#{pattern}#{picture_pathname.extname.downcase}")
+    pathname = Pathname.new("#{@options[:destination]}/#{pattern}#{picture_pathname.extname.downcase}")
   end
 
   def process
@@ -120,8 +130,11 @@ class ExifClassifier
 end
 
 if __FILE__ == $0
-  ExifClassifier.parse_opts
   classifier = ExifClassifier.new
+  unless classifier.parse_opts
+    puts classifier.usage
+    exit(-1)
+  end
   classifier.process
   classifier.report
 end
