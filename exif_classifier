@@ -49,9 +49,9 @@ class ExifClassifier
     }
     opts = OptionParser.new
     opts.banner = usage
-    opts.on('-p','--pattern PATTERN', 'output pattern') { |pattern| @options[:pattern] = pattern }
-    opts.on('-k','--delete', 'delete original files once proceed') { @options[:delete] = true } 
-    opts.on('-d','--dry', 'dry run') { @options[:dry] = true } 
+    opts.on('-p','--pattern PATTERN', "output pattern [#{@options[:pattern]}]") { |pattern| @options[:pattern] = pattern }
+    opts.on('-k','--delete', "delete original files once proceed [#{@options[:delete]}]") { @options[:delete] = true } 
+    opts.on('-d','--dry', "dry run [#{@options[:dry]}]") { @options[:dry] = true } 
     opts.parse!
     # Remainings in ARGV are sources, the last one is the destination
     @options[:destination] = ARGV.delete_at(-1)
