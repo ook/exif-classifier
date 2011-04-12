@@ -33,7 +33,10 @@ class ExifClassifier
   end
 
   def opts_valid?
-    !@options[:destination].nil? && Pathname.new(@options[:destination]).exist? && !(@options[:sources] || []).empty?
+    return false if @options[:destination].nil? || @options[:sources].empty?
+    destination = Pathname.new(@options[:destination])
+    destination.mkpath 
+    destination.directory?
   end
 
   def parse_opts
@@ -56,7 +59,7 @@ class ExifClassifier
     opts.parse!
     # Remainings in ARGV are sources, the last one is the destination
     @options[:destination] = ARGV.delete_at(-1)
-    @options[:sources]     = ARGV
+    @options[:sources]     = ARGV || []
     if opts_valid?
       stage(@options[:sources])
       return true
