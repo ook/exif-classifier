@@ -97,14 +97,16 @@ class ExifClassifier
     @staged_images.inspect
   end
   
-  def get_target_pathname(picture_pathname)
+  def get_target_pathname(picture_pathname, number = nil)
     begin
       pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@options[:pattern])
     rescue RuntimeError => e
       puts "Can't retrieve EXIF from #{picture_pathname}: #{e.message}"
       return nil
     end
-    pathname = Pathname.new("#{@options[:destination]}/#{pattern}#{picture_pathname.extname.downcase}")
+    number_suffix = number.nil? ? '' : '_%03d' % number
+    pathname = Pathname.new("#{@options[:destination]}/#{pattern}#{number_suffix}#{picture_pathname.extname.downcase}")
+    pathname.file? ? get_target_pathname(picture_pathname, number.to_i + 1) : pathname
   end
 
   def process
