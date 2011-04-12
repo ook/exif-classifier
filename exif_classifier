@@ -124,6 +124,7 @@ class ExifClassifier
         next unless entry.directory?
         begin
           entry.rmdir
+          puts "Remove empty directory #{entry.to_s}" if @options[:verbose]
         rescue SystemCallError => e
           # There's standard files remaining in the tree
         end
