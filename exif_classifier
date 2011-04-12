@@ -64,6 +64,7 @@ class ExifClassifier
     @options[:sources]     = ARGV || []
     if opts_valid?
       stage(@options[:sources])
+      puts "#{@staged_images.length} files staged for processing" if @options[:verbose]
       return true
     end
     
@@ -89,16 +90,14 @@ class ExifClassifier
       puts "Staging #{pathname.to_s}" if @options[:verbose]
       if pathname.directory?
         @staged_directories << pathname
-        return stage(pathname.children)
+        stage(pathname.children)
       elsif pathname.readable?
         @staged_images << pathname
       else
         @refused_entries << pathname
         puts "Can't read: #{pathname.to_s}"
-        raise file_or_directory.to_s
       end
     end
-    puts "#{@staged_images.length} files staged for processing" if @options[:verbose]
     @staged_images.inspect
   end
   
