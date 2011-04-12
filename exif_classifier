@@ -54,6 +54,7 @@ class ExifClassifier
     opts.banner = usage
     opts.on('-p','--pattern PATTERN', "output pattern") { |pattern| @options[:pattern] = pattern }
     opts.on('-k','--delete', "delete original files once proceed") { @options[:delete] = true } 
+    opts.on('-v','--verbose', "verbose") { @options[:verbose] = true } 
     opts.on('-d','--dry', "dry run") { @options[:dry] = true } 
     opts.on('-h','--help', "this help screen") { puts opts; exit(0) } 
     opts.parse!
