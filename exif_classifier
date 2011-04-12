@@ -22,10 +22,11 @@ class ExifClassifier
   attr_reader :options
   
   def initialize
-    @failed_copy     = []
-    @succeed_copy    = []
-    @staged_images   = []
-    @refused_entries = []
+    @failed_copy        = []
+    @succeed_copy       = []
+    @staged_images      = []
+    @refused_entries    = []
+    @staged_directories = []
   end
 
   def usage
@@ -85,8 +86,11 @@ class ExifClassifier
     files_or_directories = [files_or_directories] unless files_or_directories.instance_of?(Array)
     files_or_directories.each do |file_or_directory|
       pathname = Pathname.new(file_or_directory)
-      return stage(pathname.children) if pathname.directory?
-      if pathname.readable?
+      puts "Staging #{pathname.to_s}" if @options[:verbose]
+      if pathname.directory?
+        @staged_directories << pathname
+        return stage(pathname.children)
+      elsif pathname.readable?
         @staged_images << pathname
       else
         @refused_entries << pathname
@@ -113,6 +117,18 @@ class ExifClassifier
   def process
     @staged_images.each do |pathname|
       classify(pathname)
+    end
+    # Remove copied files, then try to remove dirtree under staged directories (from sources given at launch) 
+    if @options[:delete]
+      @succeed_copy.each { |pathname| pathname.unlink }
+      @staged_directories.each(&:children).each do |entry|
+        next unless entry.directory?
+        begin
+          entry.rmdir
+        rescue SystemCallError => e
+          # There's standard files remaining in the tree
+        end
+      end
     end
   end
 
