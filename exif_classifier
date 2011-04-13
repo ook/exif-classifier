@@ -83,14 +83,15 @@ class ExifClassifier
 
   # stage for processing files or directories, or a mix
   # of those.
-  def stage(files_or_directories = [])
+  def stage(files_or_directories = [], recursion_call = false)
     files_or_directories = [files_or_directories] unless files_or_directories.instance_of?(Array)
     files_or_directories.each do |file_or_directory|
       pathname = Pathname.new(file_or_directory)
       puts "Staging #{pathname.to_s}" if @options[:verbose]
       if pathname.directory?
-        @staged_directories << pathname
-        stage(pathname.children)
+        # If not called from stage, it means we're working with at ARG level, so we don't want to remove it if empty
+        @staged_directories << pathname if recursion_call
+        stage(pathname.children, true)
       elsif pathname.readable?
         @staged_images << pathname
       else
@@ -119,8 +120,11 @@ class ExifClassifier
     end
     # Remove copied files, then try to remove dirtree under staged directories (from sources given at launch) 
     if @options[:delete]
-      @succeed_copy.each { |pathname| pathname.unlink }
-      @staged_directories.each(&:children).each do |entry|
+      @succeed_copy.each do |pathname| 
+        pathname.unlink
+        puts "Remove classified source #{pathname.to_s}" if @options[:verbose]
+      end
+      @staged_directories.each(&:children).sort{ |a,b| a.to_s <=> b.to_s }.reverse.each do |entry|
         next unless entry.directory?
         begin
           entry.rmdir
