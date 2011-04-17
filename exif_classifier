@@ -46,7 +46,7 @@ class ExifClassifier
           :delete  => false,
           :dry     => false,
           :verbose => false,
-          :accepted_files    => ['jpeg', 'jpg' ],
+          :accepted_extensions    => ['.jpeg', '.jpg' ],
           :ignore_if_no_exif => true,
           :sources     => '',
           :destination => './'
@@ -93,13 +93,18 @@ class ExifClassifier
         @staged_directories << pathname if recursion_call
         stage(pathname.children, true)
       elsif pathname.readable?
-        @staged_images << pathname
+        if @options[:accepted_extensions].include?(pathname.extname.downcase)
+          @staged_images << pathname
+        else
+          @refused_entries << pathname
+          $2.puts("#{pathname.to_s} extension is not one of #{@options[:accepted_extensions].inspect}") if @options[:verbose]
+        end
       else
         @refused_entries << pathname
-        puts "Can't read: #{pathname.to_s}"
+        $2.puts("Can't read: #{pathname.to_s}") if @options[:verbose]
       end
     end
-    @staged_images.inspect
+    @staged_images
   end
   
   def get_target_pathname(picture_pathname, number = nil)
