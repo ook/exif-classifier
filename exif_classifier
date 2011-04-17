@@ -26,6 +26,7 @@ class ExifClassifier
     @succeed_copy       = []
     @staged_images      = []
     @refused_entries    = []
+    @failed_processing  = []
     @staged_directories = []
   end
 
@@ -75,7 +76,7 @@ class ExifClassifier
   def report
     content = %{
       Staged files  : #{@staged_images.length}
-      Failed files  : #{@failed_copy.length}
+      Failed files  : #{@failed_copy.length + @failed_processing.length}
       Proceed files : #{@succeed_copy.length}
     }
     puts content
@@ -97,11 +98,11 @@ class ExifClassifier
           @staged_images << pathname
         else
           @refused_entries << pathname
-          $2.puts("#{pathname.to_s} extension is not one of #{@options[:accepted_extensions].inspect}") if @options[:verbose]
+          $stderr.puts("#{pathname.to_s} extension is not one of #{@options[:accepted_extensions].inspect}") if @options[:verbose]
         end
       else
         @refused_entries << pathname
-        $2.puts("Can't read: #{pathname.to_s}") if @options[:verbose]
+        $stderr.puts("Can't read: #{pathname.to_s}") if @options[:verbose]
       end
     end
     @staged_images
@@ -114,11 +115,11 @@ class ExifClassifier
       if exif.date_time
         pattern = exif.date_time.strftime(@options[:pattern])
       else
-        $2.puts("Can't retrieve EXIF from #{picture_pathname}") if @options[:verbose]
+        $stderr.puts("Can't retrieve EXIF from #{picture_pathname}") if @options[:verbose]
         return nil
       end
     rescue RuntimeError => e
-      $2.puts("Can't retrieve EXIF from #{picture_pathname}: #{e.message}") if @options[:verbose]
+      $stderr.puts("Can't retrieve EXIF from #{picture_pathname}: #{e.message}") if @options[:verbose]
       return nil
     end
     number_suffix = number.nil? ? '' : '_%03d' % number
@@ -152,7 +153,8 @@ class ExifClassifier
     puts "Classify: #{picture}" if @options[:verbose]
     target_file = get_target_pathname(picture)
     unless target_file
-      $2.puts("Abort classification for #{picture}") if @options[:verbose]
+      $stderr.puts("Abort classification for #{picture}") if @options[:verbose]
+      @failed_processing << picture
       return nil
     end
     # TODO rescue SystemCallError
