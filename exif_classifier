@@ -109,9 +109,16 @@ class ExifClassifier
   
   def get_target_pathname(picture_pathname, number = nil)
     begin
-      pattern = EXIFR::JPEG.new(picture_pathname.to_s).date_time.strftime(@options[:pattern])
+      pattern = nil
+      exif = EXIFR::JPEG.new(picture_pathname.to_s)
+      if exif.date_time
+        pattern = exif.date_time.strftime(@options[:pattern])
+      else
+        $2.puts("Can't retrieve EXIF from #{picture_pathname}") if @options[:verbose]
+        return nil
+      end
     rescue RuntimeError => e
-      puts "Can't retrieve EXIF from #{picture_pathname}: #{e.message}"
+      $2.puts("Can't retrieve EXIF from #{picture_pathname}: #{e.message}") if @options[:verbose]
       return nil
     end
     number_suffix = number.nil? ? '' : '_%03d' % number
@@ -145,7 +152,7 @@ class ExifClassifier
     puts "Classify: #{picture}" if @options[:verbose]
     target_file = get_target_pathname(picture)
     unless target_file
-      puts "Abort classification for #{picture}"
+      $2.puts("Abort classification for #{picture}") if @options[:verbose]
       return nil
     end
     # TODO rescue SystemCallError
