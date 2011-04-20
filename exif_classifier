@@ -128,7 +128,10 @@ class ExifClassifier
   end
 
   def process
-    @staged_images.each do |pathname|
+    @start_at = Time.new
+    overall = @staged_images.length
+    @staged_images.each_with_index do |pathname, index|
+      puts "Classify (#{index+1}/#{overall}): #{pathname.to_s}" if @options[:verbose]
       classify(pathname)
     end
     # Remove copied files, then try to remove dirtree under staged directories (from sources given at launch) 
@@ -147,10 +150,10 @@ class ExifClassifier
         end
       end
     end
+    puts "Files proceed in #{Time.new - @start_at}s." if @options[:verbose]
   end
 
   def classify(picture)
-    puts "Classify: #{picture}" if @options[:verbose]
     target_file = get_target_pathname(picture)
     unless target_file
       $stderr.puts("Abort classification for #{picture}") if @options[:verbose]
