@@ -118,8 +118,11 @@ class ExifClassifier
         $stderr.puts("Can't retrieve EXIF from #{picture_pathname}") if @options[:verbose]
         return nil
       end
+    rescue EOFError => efe
+      $stderr.puts("Can't retrieve EXIF from #{picture_pathname}: #{efe.message} (EOFError)") if @options[:verbose]
+      return nil
     rescue RuntimeError => e
-      $stderr.puts("Can't retrieve EXIF from #{picture_pathname}: #{e.message}") if @options[:verbose]
+      $stderr.puts("Can't retrieve EXIF from #{picture_pathname}: #{e.message} (RuntimeError)") if @options[:verbose]
       return nil
     end
     number_suffix = number.nil? ? '' : '_%03d' % number
