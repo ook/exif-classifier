@@ -112,10 +112,11 @@ class ExifClassifier
     begin
       pattern = nil
       exif = EXIFR::JPEG.new(picture_pathname.to_s)
-      if exif.date_time
-        pattern = exif.date_time.strftime(@options[:pattern])
+      dt = exif.date_time_original || exif.date_time
+      if dt
+        pattern = dt.strftime(@options[:pattern])
       else
-        $stderr.puts("Can't retrieve EXIF from #{picture_pathname}") if @options[:verbose]
+        $stderr.puts("Can't retrieve date_time_original or date_time fields from EXIF from #{picture_pathname}") if @options[:verbose]
         return nil
       end
     rescue EOFError => efe
