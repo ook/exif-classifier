@@ -30,8 +30,9 @@ class ExifClassifier
     @staged_directories = []
   end
 
+  DOUBLE_COMMENT_PREFIX_RE = /^## ?/
   def usage
-    open(__FILE__).read.grep(/^## ?/).join.gsub(/^## ?/, '')
+    open(__FILE__).read.grep(DOUBLE_COMMENT_PREFIX_RE).join.gsub(DOUBLE_COMMENT_PREFIX_RE, '')
   end
 
   def opts_valid?
