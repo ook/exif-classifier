@@ -12,6 +12,8 @@
 require 'pathname'
 require 'rubygems'
 require 'exifr'
+require 'digest'
+require 'set'
 
 require 'optparse'
 
@@ -22,6 +24,7 @@ class ExifClassifier
   attr_reader :options
   
   def initialize
+    @md5s               = Set.new
     @failed_copy        = []
     @succeed_copy       = []
     @staged_images      = []
@@ -58,6 +61,7 @@ class ExifClassifier
     opts.on('-k','--delete', "delete original files once proceed") { @options[:delete] = true } 
     opts.on('-v','--verbose', "verbose") { @options[:verbose] = true } 
     opts.on('-d','--dry', "dry run") { @options[:dry] = true } 
+    opts.on('-D', '--deduplicate', 'deduplicate (if exact copies exist, keep only one copy)') { @options[:deduplicate] = true }
     opts.on('-h','--help', "this help screen") { puts opts; exit(0) } 
     opts.parse!
     # Remainings in ARGV are sources, the last one is the destination
@@ -163,6 +167,16 @@ class ExifClassifier
       $stderr.puts("Abort classification for #{picture}") if @options[:verbose]
       @failed_processing << picture
       return nil
+    end
+    if @options[:deduplicate]
+      digest = Digest::MD5.new
+      digest << picture.read
+      picture_md5 = digest.hexdigest
+      if @md5s.include?(picture_md5)
+        @succeed_copy << picture # consider duplicate as success, so it can be deleted by -d
+        return
+      end
+      @md5s << picture_md5
     end
     # TODO rescue SystemCallError
     target_file.dirname.mkpath
