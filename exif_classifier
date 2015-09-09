@@ -47,6 +47,7 @@ class ExifClassifier
   def parse_opts
     @options = {
           :pattern => '%Y/%m/%Y%m%d-%H%M%S',
+          :deduplicate => true,
           :delete  => false,
           :dry     => false,
           :verbose => false,
@@ -61,7 +62,7 @@ class ExifClassifier
     opts.on('-k','--delete', "delete original files once proceed") { @options[:delete] = true } 
     opts.on('-v','--verbose', "verbose") { @options[:verbose] = true } 
     opts.on('-d','--dry', "dry run") { @options[:dry] = true } 
-    opts.on('-D', '--deduplicate', 'deduplicate (if exact copies exist, keep only one copy)') { @options[:deduplicate] = true }
+    opts.on('-D', '--no-deduplication', 'refuse deduplication (by default, if exact copies exist, keep only one copy)') { @options[:deduplicate] = false }
     opts.on('-h','--help', "this help screen") { puts opts; exit(0) } 
     opts.parse!
     # Remainings in ARGV are sources, the last one is the destination
